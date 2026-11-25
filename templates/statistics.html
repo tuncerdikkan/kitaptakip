@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 mb-0">İstatistik</h1>
+  <a class="btn btn-outline-primary" href="{{ url_for('settings') }}">Hedef ayarla</a>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-md-4"><div class="card stat-card"><div class="card-body"><div class="stat-label">Yıllık hedef</div><div class="stat-value">{{ data.finished }}/{{ goal }}</div></div></div></div>
+  <div class="col-md-4"><div class="card stat-card"><div class="card-body"><div class="stat-label">Okuma serisi</div><div class="stat-value">{{ data.streak }} gün</div></div></div></div>
+  <div class="col-md-4"><div class="card stat-card"><div class="card-body"><div class="stat-label">Hedef durumu</div><div class="stat-value fs-5">{{ "Hedefin gerisindesin" if data.finished < goal else "Hedefe ulaştın" }}</div></div></div></div>
+</div>
+<div class="card">
+  <div class="card-body">
+    <h2 class="h5">Aylık okunan sayfa</h2>
+    <canvas id="monthlyChart"></canvas>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+new Chart(document.getElementById('monthlyChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'],
+    datasets: [{label: 'Sayfa', data: {{ data.monthly | tojson }}, backgroundColor: '#EC691F'}]
+  },
+  options: {responsive: true, scales: {y: {beginAtZero: true}}}
+});
+</script>
+{% endblock %}

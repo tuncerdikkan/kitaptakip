@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Arama sonuçları</h1>
+  <a class="btn btn-outline-primary" href="{{ url_for('add_manual') }}">Elle ekle</a>
+</div>
+{% if message %}
+<div class="alert alert-warning">{{ message }}</div>
+{% endif %}
+<div class="book-grid">
+  {% for book in results %}
+  <article class="card book-card">
+    {% if book.cover %}
+      <img class="book-cover" src="{{ book.cover }}" alt="{{ book.title }}">
+    {% else %}
+      <div class="book-cover default-cover"><i class="bi bi-book"></i></div>
+    {% endif %}
+    <div class="card-body">
+      <h2 class="h6">{{ book.title }}</h2>
+      <p class="author">{{ book.author }}</p>
+      <p class="small text-muted">{{ book.publisher }}</p>
+      {% for status, label in status_labels.items() %}
+      <form action="{{ url_for('add_from_search', durum=status) }}" method="post" class="mb-1">
+        <input type="hidden" name="title" value="{{ book.title }}">
+        <input type="hidden" name="author" value="{{ book.author }}">
+        <input type="hidden" name="publisher" value="{{ book.publisher }}">
+        <input type="hidden" name="cover" value="{{ book.cover }}">
+        <input type="hidden" name="link" value="{{ book.link }}">
+        <button class="btn btn-sm {% if status == 'okunuyor' %}btn-primary{% else %}btn-outline-primary{% endif %} w-100" type="submit">{{ label }}</button>
+      </form>
+      {% endfor %}
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% endblock %}
