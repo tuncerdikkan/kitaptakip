@@ -90,6 +90,9 @@ def add_from_search(durum):
         request.form.get("cover", ""),
         request.form.get("title", ""),
     )
+    today = db.datetime.now(db.TZ).date().isoformat()
+    start_date = today if durum in ("okunuyor", "okundu") else None
+    finish_date = today if durum == "okundu" else None
     book_id = db.add_book({
         "title": request.form.get("title", "").strip(),
         "author": request.form.get("author", "").strip(),
@@ -100,6 +103,8 @@ def add_from_search(durum):
         "isbn": details.get("isbn") or isbn,
         "publish_year": details.get("publish_year"),
         "status": durum,
+        "start_date": start_date,
+        "finish_date": finish_date,
     })
     if book_id:
         return redirect(url_for("library", raf=durum))
@@ -115,6 +120,14 @@ def add_manual():
         if not page_count or page_count < 1:
             error = "Sayfa sayısı 0'dan büyük olmalıdır."
         else:
+            status = request.form.get("status", "okunacak")
+            today = db.datetime.now(db.TZ).date().isoformat()
+            start_date = request.form.get("start_date", "").strip() or (
+                today if status in ("okunuyor", "okundu") else None
+            )
+            finish_date = request.form.get("finish_date", "").strip() or (
+                today if status == "okundu" else None
+            )
             book_id = db.add_book({
                 "title": request.form["title"].strip(),
                 "author": request.form.get("author", "").strip(),
@@ -124,7 +137,9 @@ def add_manual():
                 "page_count": page_count,
                 "isbn": request.form.get("isbn", "").strip(),
                 "publish_year": request.form.get("publish_year", type=int),
-                "status": request.form.get("status", "okunacak"),
+                "status": status,
+                "start_date": start_date,
+                "finish_date": finish_date,
             })
             if book_id:
                 return redirect(url_for("library", raf=request.form.get("status", "okunacak")))
@@ -171,6 +186,19 @@ def update_rating(book_id):
     rating = request.form.get("rating", type=int)
     note = request.form.get("note", "").strip()
     db.update_rating(book_id, rating, note)
+    return redirect(request.referrer or url_for("library"))
+
+
+@app.route("/kitap/<int:book_id>/tarihler", methods=["POST"])
+@login_required
+def update_dates(book_id):
+    result = db.update_dates(
+        book_id,
+        request.form.get("start_date", "").strip(),
+        request.form.get("finish_date", "").strip(),
+    )
+    if not result["success"]:
+        session["flash_error"] = result["error"]
     return redirect(request.referrer or url_for("library"))
 
 

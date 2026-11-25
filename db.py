@@ -31,6 +31,7 @@ def init_db():
                 status TEXT NOT NULL CHECK(status IN ('okunacak','okunuyor','okundu')),
                 rating INTEGER CHECK(rating BETWEEN 1 AND 5),
                 note TEXT,
+                start_date TEXT,
                 finish_date TEXT,
                 created_at TEXT NOT NULL
             );
@@ -46,6 +47,12 @@ def init_db():
                 value TEXT NOT NULL
             );
         """)
+        columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(books)").fetchall()
+        }
+        if "start_date" not in columns:
+            connection.execute("ALTER TABLE books ADD COLUMN start_date TEXT")
 
 
 def add_book(data):
@@ -65,12 +72,13 @@ def add_book(data):
         cursor = connection.execute("""
             INSERT INTO books
             (title, author, publisher, cover_path, external_url, page_count, isbn,
-             publish_year, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             publish_year, status, start_date, finish_date, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             data["title"], data.get("author"), data.get("publisher"),
             data.get("cover_path"), data.get("external_url"), data.get("page_count"),
             data.get("isbn"), data.get("publish_year"), data["status"],
+            data.get("start_date"), data.get("finish_date"),
             datetime.now(TZ).isoformat(),
         ))
         return cursor.lastrowid
@@ -132,11 +140,15 @@ def delete_book(book_id):
 
 def update_status(book_id, status):
     with get_connection() as connection:
-        finish_date = datetime.now(TZ).date().isoformat() if status == "okundu" else None
+        today = datetime.now(TZ).date().isoformat()
+        finish_date = today if status == "okundu" else None
+        book = connection.execute(
+            "SELECT page_count, start_date FROM books WHERE id=?", (book_id,)
+        ).fetchone()
+        start_date = None
+        if status in ("okunuyor", "okundu"):
+            start_date = book["start_date"] or today
         if status == "okundu":
-            book = connection.execute(
-                "SELECT page_count FROM books WHERE id=?", (book_id,)
-            ).fetchone()
             latest = connection.execute(
                 "SELECT COALESCE(MAX(pages_read), 0) AS pages FROM readings WHERE book_id=?",
                 (book_id,),
@@ -149,8 +161,9 @@ def update_status(book_id, status):
                     (book_id, book["page_count"], datetime.now(TZ).isoformat()),
                 )
         connection.execute(
-            "UPDATE books SET status=?, finish_date=? WHERE id=?",
-            (status, finish_date, book_id),
+            "UPDATE books SET status=?, start_date=COALESCE(start_date, ?), "
+            "finish_date=? WHERE id=?",
+            (status, start_date, finish_date, book_id),
         )
 
 
@@ -174,14 +187,27 @@ def add_reading(book_id, pages):
             (book_id, pages, datetime.now(TZ).isoformat()),
         )
         if pages == 0:
-            connection.execute("UPDATE books SET status='okunacak' WHERE id=?", (book_id,))
+            connection.execute(
+                "UPDATE books SET status='okunacak', finish_date=NULL WHERE id=?",
+                (book_id,),
+            )
         elif pages == book["page_count"]:
             connection.execute(
-                "UPDATE books SET status='okundu', finish_date=? WHERE id=?",
-                (datetime.now(TZ).date().isoformat(), book_id),
+                "UPDATE books SET status='okundu', "
+                "start_date=COALESCE(start_date, ?), finish_date=? WHERE id=?",
+                (
+                    datetime.now(TZ).date().isoformat(),
+                    datetime.now(TZ).date().isoformat(),
+                    book_id,
+                ),
             )
         elif pages > 0:
-            connection.execute("UPDATE books SET status='okunuyor' WHERE id=?", (book_id,))
+            today = datetime.now(TZ).date().isoformat()
+            connection.execute(
+                "UPDATE books SET status='okunuyor', "
+                "start_date=COALESCE(start_date, ?) WHERE id=?",
+                (today, book_id),
+            )
     return {"success": True}
 
 
@@ -219,6 +245,17 @@ def update_rating(book_id, rating, note):
             "UPDATE books SET rating=?, note=? WHERE id=?",
             (rating, note, book_id),
         )
+
+
+def update_dates(book_id, start_date=None, finish_date=None):
+    if start_date and finish_date and finish_date < start_date:
+        return {"success": False, "error": "Bitiş tarihi başlangıç tarihinden önce olamaz."}
+    with get_connection() as connection:
+        connection.execute(
+            "UPDATE books SET start_date=?, finish_date=? WHERE id=?",
+            (start_date or None, finish_date or None, book_id),
+        )
+    return {"success": True}
 
 
 def get_setting(key, default=None):

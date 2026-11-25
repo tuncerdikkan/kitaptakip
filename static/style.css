@@ -32,5 +32,6 @@ body { background: var(--page); color: var(--text); }
 .stat-card { min-height: 125px; }
 .stat-label { color: #64748b; }
 .stat-value { font-size: 2rem; font-weight: 700; color: var(--orange); }
+.book-dates { border-top: 1px solid #eee; padding-top: .5rem; }
 @media (max-width: 991px) { .search-form { width: 100%; } .book-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 575px) { .book-grid { grid-template-columns: 1fr; } .book-cover { height: 210px; } }

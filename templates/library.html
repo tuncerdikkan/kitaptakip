@@ -48,6 +48,21 @@
           {% endfor %}
         </select>
       </form>
+      <div class="book-dates mt-3">
+        <div class="small text-muted">
+          Başlangıç: {{ book.start_date or "Belirtilmedi" }}
+        </div>
+        <div class="small text-muted">
+          Bitiş: {{ book.finish_date or "Belirtilmedi" }}
+        </div>
+      </div>
+      <form action="{{ url_for('update_dates', book_id=book.id) }}" method="post" class="mt-2">
+        <input class="form-control form-control-sm mb-2" type="date" name="start_date"
+               value="{{ book.start_date or '' }}" aria-label="Başlangıç tarihi">
+        <input class="form-control form-control-sm mb-2" type="date" name="finish_date"
+               value="{{ book.finish_date or '' }}" aria-label="Bitiş tarihi">
+        <button class="btn btn-outline-primary btn-sm w-100" type="submit">Tarihleri kaydet</button>
+      </form>
       {% if book.latest_reading_id %}
       <form action="{{ url_for('delete_reading', reading_id=book.latest_reading_id) }}" method="post" class="mt-2">
         <button class="btn btn-link btn-sm text-danger p-0" type="submit">Son kayıt sil</button>

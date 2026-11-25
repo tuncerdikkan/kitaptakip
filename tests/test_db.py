@@ -48,6 +48,30 @@ def test_manual_read_status_fills_page_progress():
     assert book["pages_read"] == 240
 
 
+def test_book_dates_can_be_updated():
+    book_id = db.add_book({
+        "title": "Tarihli Kitap",
+        "page_count": 180,
+        "status": "okunuyor",
+        "start_date": "2026-01-10",
+    })
+    result = db.update_dates(book_id, "2026-01-10", "2026-01-20")
+    assert result["success"]
+    book = db.get_book(book_id)
+    assert book["start_date"] == "2026-01-10"
+    assert book["finish_date"] == "2026-01-20"
+
+
+def test_finish_date_cannot_precede_start_date():
+    book_id = db.add_book({
+        "title": "Tarih Hatası",
+        "page_count": 150,
+        "status": "okunuyor",
+    })
+    result = db.update_dates(book_id, "2026-02-10", "2026-02-01")
+    assert not result["success"]
+
+
 def test_duplicate_books_are_rejected():
     data = {"title": "Bir Kitap", "page_count": 100, "status": "okunacak"}
     assert db.add_book(data)
